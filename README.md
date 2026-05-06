@@ -1,8 +1,10 @@
 # OpenCred Releases
 
-This repository hosts **public release artefacts** for [OpenCred](https://docs.opencred.global) — a local-first platform for issuing and verifying W3C Verifiable Credentials, published by [NFH Trust Labs](https://github.com/nfh-trust-labs).
+This repository hosts release artefacts for [**OpenCred**](https://opencred.gitbook.io/docs) — a local-first platform for issuing and verifying W3C Verifiable Credentials, published by [NFH Trust Labs](https://github.com/nfh-trust-labs).
 
-> **Looking for source code or issues?** This repo contains binaries only. Source code lives in the private `nfh-trust-labs/opencred` repo. To file a bug, request a feature, or contribute, reach out via the contact details on https://docs.opencred.global.
+> **🧪 Beta release.** OpenCred is in early-access beta. Functionality is feature-complete and the protocols are stable; some platform polish (Windows installers, code-signing, auto-update on macOS) is still in progress.
+>
+> **Bug reports and feature requests:** [open an issue](https://github.com/nfh-trust-labs/opencred-releases/issues) and a maintainer will respond.
 
 ## What's here
 
@@ -13,11 +15,11 @@ Each tagged release publishes:
 | `OpenCred-<version>.dmg` | macOS installer (Intel + Apple Silicon) | Desktop users on macOS |
 | `OpenCred-<version>.AppImage` | Linux portable binary | Desktop users on Linux |
 | `OpenCred-<version>.deb` | Debian / Ubuntu package | Desktop users on Linux |
-| `latest-mac.yml`, `latest-linux.yml` | Auto-updater manifests | Internal — used by electron-updater |
-| `*.blockmap` | Differential update blockmaps | Internal — used by electron-updater |
+| `latest-mac.yml`, `latest-linux.yml` | Auto-updater manifests | Used by electron-updater |
+| `*.blockmap` | Differential update blockmaps | Used by electron-updater |
 | `SHA256SUMS` | Checksums for all artefacts | Anyone verifying download integrity |
 
-> **Windows builds are not currently shipped.** Tracked in the source repo.
+Windows installers will be added in a later beta.
 
 The Docker server image is published separately to **GitHub Container Registry**:
 
@@ -32,7 +34,7 @@ Pull with:
 docker pull ghcr.io/nfh-trust-labs/opencred/opencred-server:latest
 ```
 
-No GHCR authentication is required — the image is public.
+The image is multi-architecture (`linux/amd64` + `linux/arm64`) and public — no GHCR authentication is required. Apple Silicon Macs, AWS Graviton, Raspberry Pi, and standard amd64 cloud VMs all pull the right variant automatically.
 
 ## Verifying downloads
 
@@ -44,29 +46,45 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 On macOS use `shasum -a 256 -c` instead.
 
+## macOS first-launch
+
+The first time you open OpenCred on macOS, you'll see a one-time security prompt: *"OpenCred cannot be opened because the developer cannot be verified."* This is expected during the beta — to allow the app to launch:
+
+1. Open **Finder → Applications**.
+2. **Right-click** (or Ctrl-click) on `OpenCred.app` and choose **Open**.
+3. In the confirmation dialog, click **Open** again.
+4. macOS remembers the approval. Every subsequent launch is normal.
+
+If you instead see *"OpenCred is damaged and can't be opened"*, the download picked up an extra quarantine attribute. Clear it from Terminal and retry:
+
+```bash
+xattr -cr /Applications/OpenCred.app
+open /Applications/OpenCred.app
+```
+
 ## Auto-updates
 
-The Desktop Client auto-updates from this repository via [electron-updater](https://www.electron.build/auto-update). No action is required from end users — once installed, OpenCred polls for new releases and prompts to install.
+The Desktop Client polls this repository for new versions via [electron-updater](https://www.electron.build/auto-update).
 
-To opt out, disable auto-updates in **Settings → Updates** within the app.
+> **During the beta, auto-update is disabled on macOS.** Re-download new versions manually from this page when notified, using the same approval steps above.
+
+To opt out of auto-updates entirely once they're enabled, disable them in **Settings → Updates** within the app.
 
 ## Documentation
 
-- **End-user guide**: https://docs.opencred.global
-- **Bootcamp**: https://docs.opencred.global/bootcamp
-- **Docker operator guide**: https://docs.opencred.global/docker
-- **Security model**: https://docs.opencred.global/security
+Full documentation — installation guides, API reference, the bootcamp walkthrough, and the security model — lives at:
+
+👉 **<https://opencred.gitbook.io/docs>**
 
 ## Support
 
-OpenCred is published by NFH Trust Labs. For commercial deployments, integration support, or custom builds, see https://docs.opencred.global for contact information.
+- **Bug reports / feature requests:** [open an issue](https://github.com/nfh-trust-labs/opencred-releases/issues)
+- **Documentation:** <https://opencred.gitbook.io/docs>
 
 ## Licensing
 
-OpenCred binaries distributed via this repository are made available under the terms specified in [`NOTICE.md`](./NOTICE.md). The OpenCred source code is **not** open-source — redistribution, modification, or reverse engineering is not permitted without prior written permission from NFH Trust Labs.
-
-A formal end-user licence agreement (EULA) will be published before the first commercial / regulated adopter ships in production. Until then, use is permitted for evaluation, development, and bootcamp / workshop scenarios.
+OpenCred binaries distributed via this repository are made available under the terms specified in [`NOTICE.md`](./NOTICE.md). A formal end-user licence agreement (EULA) will be published before the first commercial / regulated production deployment.
 
 ---
 
-*This repository is a distribution mirror. Pushes here are automated by CI in the source repo and should not be made manually.*
+*This repository is a distribution mirror. Releases are published automatically by CI on every tagged version.*
