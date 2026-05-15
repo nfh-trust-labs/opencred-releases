@@ -1,6 +1,5 @@
 'use strict';
 
-var zod = require('zod');
 var dns = require('dns');
 var net = require('net');
 var crypto = require('crypto');
@@ -186,85 +185,6 @@ var init_errors = __esm({
     };
   }
 });
-var init_config = __esm({
-  "../shared/dist/config.js"() {
-    zod.z.object({
-      NODE_ENV: zod.z.enum(["development", "production", "test"]).default("development"),
-      PORT: zod.z.coerce.number().int().positive().default(3e3),
-      LOG_LEVEL: zod.z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
-      // DeDi integration
-      DEDI_API_URL: zod.z.string().url().optional(),
-      DEDI_API_TIMEOUT_MS: zod.z.coerce.number().int().positive().default(1e4),
-      DEDI_AUTH_TYPE: zod.z.enum(["bearer", "api-key"]).default("api-key"),
-      DEDI_API_KEY: zod.z.string().optional(),
-      DEDI_EMAIL: zod.z.string().email().optional(),
-      DEDI_PASSWORD: zod.z.string().min(1).optional(),
-      DEDI_DEFAULT_NAMESPACE: zod.z.string().optional(),
-      // Session / state
-      SESSION_TTL_MS: zod.z.coerce.number().int().positive().default(4 * 60 * 60 * 1e3),
-      // 4 hours
-      SESSION_SWEEP_INTERVAL_MS: zod.z.coerce.number().int().positive().default(60 * 1e3),
-      // 60 seconds
-      // Auth / JWT
-      JWT_SECRET: zod.z.string().min(32).optional(),
-      JWT_ISSUER: zod.z.string().default("opencred"),
-      JWT_EXPIRY_SECONDS: zod.z.coerce.number().int().positive().default(3600),
-      // Batch processing
-      MAX_BATCH_SIZE: zod.z.coerce.number().int().positive().default(1e3),
-      // CSCA Trust Store
-      OPENCRED_CSCA_TRUST_STORE_PATH: zod.z.string().optional(),
-      // OpenCred-managed delegated-signing key persistence (NOT issuer keys).
-      // These allow the server's own signing key to survive container restarts.
-      // When both are absent the provider auto-generates an ephemeral key (dev mode).
-      OPENCRED_SIGNING_KEY_PEM: zod.z.string().optional(),
-      OPENCRED_SIGNING_KEY_PATH: zod.z.string().optional(),
-      // CORS
-      //
-      // Anand's P3-02: the previous default `http://localhost:5173` was the
-      // Vite dev-server port. In production, an operator who forgot to set
-      // `CORS_ORIGIN` shipped a silent CORS misconfiguration — every request
-      // from the real frontend got blocked and the only signal was the
-      // browser's CORS error (no server log). The default stays for dev/test
-      // convenience, but production now refuses to start without an explicit
-      // `CORS_ORIGIN` (see the superRefine below). Same pattern the server's
-      // `OPENCRED_API_KEY` uses.
-      CORS_ORIGIN: zod.z.string().default("http://localhost:5173")
-    }).superRefine((data, ctx) => {
-      if (data.NODE_ENV === "production" && data.CORS_ORIGIN === "http://localhost:5173") {
-        ctx.addIssue({
-          code: zod.z.ZodIssueCode.custom,
-          message: "CORS_ORIGIN must be set to the production frontend origin when NODE_ENV=production (the default 'http://localhost:5173' is only appropriate for local development).",
-          path: ["CORS_ORIGIN"]
-        });
-      }
-      if (data.DEDI_API_URL) {
-        if (data.DEDI_AUTH_TYPE === "api-key" && !data.DEDI_API_KEY) {
-          ctx.addIssue({
-            code: zod.z.ZodIssueCode.custom,
-            message: "DEDI_API_KEY is required when DEDI_AUTH_TYPE is 'api-key'",
-            path: ["DEDI_API_KEY"]
-          });
-        }
-        if (data.DEDI_AUTH_TYPE === "bearer") {
-          if (!data.DEDI_EMAIL) {
-            ctx.addIssue({
-              code: zod.z.ZodIssueCode.custom,
-              message: "DEDI_EMAIL is required when DEDI_AUTH_TYPE is 'bearer'",
-              path: ["DEDI_EMAIL"]
-            });
-          }
-          if (!data.DEDI_PASSWORD) {
-            ctx.addIssue({
-              code: zod.z.ZodIssueCode.custom,
-              message: "DEDI_PASSWORD is required when DEDI_AUTH_TYPE is 'bearer'",
-              path: ["DEDI_PASSWORD"]
-            });
-          }
-        }
-      }
-    });
-  }
-});
 function isPrivateIPv4(ip) {
   for (const prefix of PRIVATE_IPV4_PREFIXES) {
     if (ip.startsWith(prefix))
@@ -333,10 +253,6 @@ var init_ssrf = __esm({
     PRIVATE_IPV4_PREFIXES = ["10.", "127.", "0.", "169.254."];
   }
 });
-var init_hash = __esm({
-  "../shared/dist/hash.js"() {
-  }
-});
 
 // ../shared/dist/credential-format.js
 function detectCredentialInputFormat(input) {
@@ -377,22 +293,13 @@ var init_jwt_size = __esm({
   }
 });
 
-// ../shared/dist/result.js
-var init_result = __esm({
-  "../shared/dist/result.js"() {
-  }
-});
-
 // ../shared/dist/index.js
 var init_dist = __esm({
   "../shared/dist/index.js"() {
     init_errors();
-    init_config();
     init_ssrf();
-    init_hash();
     init_credential_format();
     init_jwt_size();
-    init_result();
   }
 });
 
@@ -424,7 +331,6 @@ var init_context_generator = __esm({
 });
 var init_credential_builder = __esm({
   "../vc-core/dist/credential-builder.js"() {
-    init_dist();
     init_types();
   }
 });
@@ -4591,7 +4497,7 @@ function sha256Hex(data) {
 function sha384(data) {
   return new Uint8Array(crypto.createHash("sha384").update(data).digest());
 }
-var init_hash2 = __esm({
+var init_hash = __esm({
   "../crypto/dist/hash.js"() {
   }
 });
@@ -4738,7 +4644,7 @@ var init_data_integrity = __esm({
   "../crypto/dist/data-integrity.js"() {
     init_dist();
     init_dist2();
-    init_hash2();
+    init_hash();
     jsonld = _jsonldNs__namespace.default ?? _jsonldNs__namespace;
     CRYPTOSUITE = "ecdsa-rdfc-2019";
     PROOF_TYPE = "DataIntegrityProof";
@@ -4810,7 +4716,6 @@ function resolvePublicKey2(options) {
 var EDDSA_CRYPTOSUITE, ED25519_SIGNATURE_LENGTH;
 var init_eddsa_data_integrity = __esm({
   "../crypto/dist/eddsa-data-integrity.js"() {
-    init_dist();
     init_data_integrity();
     EDDSA_CRYPTOSUITE = "eddsa-rdfc-2022";
     ED25519_SIGNATURE_LENGTH = 64;
@@ -4820,18 +4725,15 @@ var init_eddsa_data_integrity = __esm({
 // ../crypto/dist/alg-mapping.js
 var init_alg_mapping = __esm({
   "../crypto/dist/alg-mapping.js"() {
-    init_dist();
   }
 });
 var init_sd_jwt_vc_signing = __esm({
   "../crypto/dist/sd-jwt-vc-signing.js"() {
-    init_dist();
     init_alg_mapping();
   }
 });
 var init_vc_jwt_signing = __esm({
   "../crypto/dist/vc-jwt-signing.js"() {
-    init_dist();
     init_alg_mapping();
   }
 });
@@ -4842,14 +4744,11 @@ init_dist();
 // ../crypto/dist/index.js
 init_data_integrity();
 init_eddsa_data_integrity();
-init_hash2();
-
-// ../crypto/dist/jws-proof.js
-init_dist();
+init_hash();
 init_alg_mapping();
 
 // ../crypto/dist/jcs.js
-init_hash2();
+init_hash();
 function computeRevocationHash(credential) {
   const canonical = jsonCanonicalize.canonicalize(credential);
   return sha256Hex(canonical);
@@ -4887,15 +4786,9 @@ function resolveRevocationHash(credential) {
 // ../crypto/dist/index.js
 init_alg_mapping();
 
-// ../crypto/dist/key-utils.js
-init_dist();
-
 // ../crypto/dist/index.js
 init_sd_jwt_vc_signing();
 init_vc_jwt_signing();
-
-// ../crypto/dist/signing-key-provider.js
-init_dist();
 
 // ../did/dist/did-key.js
 init_dist();
@@ -5148,8 +5041,8 @@ var DIDWebResolver = class {
           Accept: "application/did+ld+json, application/json"
         }
       });
-    } catch (err2) {
-      if (err2 instanceof Error && err2.name === "AbortError") {
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
         throw new DIDResolutionError(`Timeout fetching DID document from: ${url}`);
       }
       throw new DIDResolutionError(`Failed to fetch DID document from: ${url}`);
@@ -6055,8 +5948,8 @@ async function checkBitstringStatusList(credentialStatus, options = {}) {
       };
     }
     return { name: "bitstringStatus", passed: true };
-  } catch (err2) {
-    const message = err2 instanceof Error ? err2.message : "Unable to check BitstringStatusList";
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unable to check BitstringStatusList";
     return {
       name: "bitstringStatus",
       passed: false,
@@ -6204,11 +6097,11 @@ async function checkX509Chain(credential, options = {}) {
   let certs;
   try {
     certs = x5c.map(parseX5cCert);
-  } catch (err2) {
+  } catch (err) {
     return {
       name: "x509-chain",
       passed: false,
-      detail: `Failed to parse x5c certificates: ${err2 instanceof Error ? err2.message : "unknown error"}`
+      detail: `Failed to parse x5c certificates: ${err instanceof Error ? err.message : "unknown error"}`
     };
   }
   if (certs.length === 0) {
@@ -6270,11 +6163,11 @@ async function checkX509Chain(credential, options = {}) {
   let trustAnchorCerts;
   try {
     trustAnchorCerts = trustAnchorPems.map((pem) => new crypto.X509Certificate(pem));
-  } catch (err2) {
+  } catch (err) {
     return {
       name: "x509-chain",
       passed: false,
-      detail: `Failed to parse configured trust anchors: ${err2 instanceof Error ? err2.message : "unknown error"}`
+      detail: `Failed to parse configured trust anchors: ${err instanceof Error ? err.message : "unknown error"}`
     };
   }
   const anchor = findAnchor(certs, trustAnchorCerts);
@@ -6482,7 +6375,7 @@ async function verifyPdf(pdfBytes, config = {}) {
   let extracted;
   try {
     extracted = await extractEmbeddedCredential(pdfBytes);
-  } catch (err2) {
+  } catch (err) {
     return {
       verified: false,
       code: "INVALID",
@@ -6490,7 +6383,7 @@ async function verifyPdf(pdfBytes, config = {}) {
         {
           name: "pdf-parse",
           passed: false,
-          detail: `Failed to parse PDF: ${err2 instanceof Error ? err2.message : String(err2)}`
+          detail: `Failed to parse PDF: ${err instanceof Error ? err.message : String(err)}`
         }
       ]
     };
@@ -6548,7 +6441,7 @@ async function verifyPdf(pdfBytes, config = {}) {
           ]
         };
     }
-  } catch (err2) {
+  } catch (err) {
     return {
       verified: false,
       code: "INVALID",
@@ -6556,7 +6449,7 @@ async function verifyPdf(pdfBytes, config = {}) {
         {
           name: "pdf-credential-decode",
           passed: false,
-          detail: `Embedded credential could not be decoded: ${err2 instanceof Error ? err2.message : String(err2)}`
+          detail: `Embedded credential could not be decoded: ${err instanceof Error ? err.message : String(err)}`
         }
       ]
     };
@@ -7613,5 +7506,3 @@ exports.createVerifier = createVerifier;
 exports.detectFormat = detectFormat2;
 exports.verifyCredential = verifyCredential2;
 exports.verifyPdf = verifyPdf2;
-//# sourceMappingURL=index.cjs.map
-//# sourceMappingURL=index.cjs.map
