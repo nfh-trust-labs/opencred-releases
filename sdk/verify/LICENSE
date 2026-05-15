@@ -1,0 +1,29 @@
+# LICENSE
+
+OpenCred — `@opencred/verify` SDK
+Copyright © 2026 NFH Trust Labs. All rights reserved.
+
+This package is distributed under the same terms as the rest of the OpenCred project — see [NOTICE.md](../../NOTICE.md) in the root of this repository for the full notice. The summary below is offered for convenience and does not override the canonical NOTICE.md.
+
+## Permitted without separate permission
+
+- Installation and use of this SDK in your own services for verifying OpenCred-issued Verifiable Credentials
+- Use in workshops, training sessions, and bootcamps
+- Use for personal, internal, or non-commercial development
+- Use within an organisation for internal proof-of-concept work
+- Public discussion, screenshots, and reviews of the software
+
+## Not permitted without prior written permission from NFH Trust Labs
+
+Until a formal end-user licence agreement (EULA) is published:
+
+- Redistribution of the SDK as a separate package (including re-uploading, mirroring, or repackaging under a different name)
+- Modification or fork-and-republish workflows
+- Use in commercial production deployments serving third parties
+- Use in regulated environments (financial services, healthcare, government identity, etc.) without an explicit support agreement
+
+## Third-party software
+
+This SDK bundles third-party open-source components — see `dist/index.js` for the inlined sources and `package.json` for the runtime dependencies. The licences of those components apply to their respective code and are unaffected by the terms above.
+
+Contact <opencred@nfh-trust.com> for licensing inquiries.
