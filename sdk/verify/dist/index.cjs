@@ -7475,12 +7475,7 @@ function createVerifier(options = {}) {
     /* @__PURE__ */ new Map([
       ["key", new DIDKeyResolver()],
       ["jwk", new DIDJwkResolver()],
-      [
-        "web",
-        new DIDWebResolver(
-          dediClient ? createDeDiDIDWebFallback(dediClient) : void 0
-        )
-      ]
+      ["web", new DIDWebResolver(dediClient ? createDeDiDIDWebFallback(dediClient) : void 0)]
     ])
   );
   const verifierConfig = {
