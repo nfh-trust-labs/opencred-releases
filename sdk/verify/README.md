@@ -75,7 +75,9 @@ const result = await verify(jwt);
 
 For bearer auth, use `auth: { type: "bearer", email, password }` instead.
 
-> **Warning — silent-skip behaviour.** If you issue credentials with `credentialStatus` but don't configure DeDi on the verifier, the revocation check is silently skipped — revoked credentials will still verify as `VALID` because the verifier has no way to query the registry. Always configure DeDi on production verifiers if your issuance flow uses revocation.
+The `dedi` object also accepts the underlying `DeDiClient` resilience knobs: `timeoutMs` (per-request timeout, hard-capped at 10s) and `maxRetries` (retries for a failed idempotent lookup; default `2`, `0` disables). On a flaky DeDi link, raise `maxRetries` rather than `timeoutMs`. These mirror the server's `OPENCRED_DEDI_TIMEOUT_MS` / `OPENCRED_DEDI_MAX_RETRIES`.
+
+> **Warning — revocation requires DeDi.** If you issue credentials with `credentialStatus` but don't configure DeDi on the verifier, revocation cannot be checked — revoked credentials will still verify as `VALID` because the verifier has no way to query the registry. The skip is visible in the result: `result.checks` contains a `revocation` row whose `detail` says the check was **NOT** performed. Production verifiers should configure DeDi whenever the issuance flow uses revocation, and strict relying parties can treat that check row as a policy failure.
 
 ## Verifying PDF certificates
 
@@ -112,7 +114,7 @@ The recommended entry point. Builds a verifier with the given configuration; the
 
 | Field | Type | Purpose |
 |---|---|---|
-| `dedi` | `DeDiClientConfig` | DeDi connection details for revocation + did:web fallback |
+| `dedi` | `DeDiClientConfig` | DeDi connection details for revocation + did:web fallback. Also accepts `timeoutMs` (≤10s) and `maxRetries` (default `2`) for resilience tuning |
 | `trustAnchors` | `string[]` | PEM CSCA roots for DSC chain validation |
 | `didResolver` | `DIDResolver` | Override the default composite resolver (did:key + did:jwk + did:web) |
 | `logger` | `{ debug, info, warn, error }` | Sink for DeDi operational events |
@@ -123,7 +125,7 @@ Verify a credential. Accepts:
 
 * A **vc-jwt** compact string (`"eyJ…"`).
 * An **sd-jwt-vc** compact string (`"eyJ…~…~…~"`).
-* An **OPENCRED1 PixelPass** string (`"OPENCRED1:zBase45…"`) — the decoded payload of an OpenCred-issued QR.
+* A **PixelPass QR data** string — the raw Base45 payload of an OpenCred-issued QR (no prefix; what `@mosip/pixelpass.decode()` consumes).
 * A **JSON-LD VC** object (with `proof.type === "DataIntegrityProof"`).
 
 ### `verifier.pdf(pdfBytes)` → `Promise<CredentialVerificationResult>`
@@ -136,7 +138,7 @@ One-shot helpers — equivalent to `createVerifier(options)(...)` but discard th
 
 ### `detectFormat(input)` → `CredentialFormat`
 
-Returns the detected wire format without verifying. Useful for routing. The `CredentialFormat` union is `"data-integrity" | "vc-jwt" | "sd-jwt-vc" | "jws"`. For PDF inputs and OPENCRED1 PixelPass strings, the SDK decodes them before reaching `detectFormat` — call `verifyPdf` directly for PDFs, and pass the OPENCRED1 string straight to `verify(input)` to let the SDK route internally.
+Returns the detected wire format without verifying. Useful for routing. The `CredentialFormat` union is `"data-integrity" | "vc-jwt" | "sd-jwt-vc" | "jws"`. For PDF inputs and PixelPass QR data strings, the SDK decodes them before reaching `detectFormat` — call `verifyPdf` directly for PDFs, and pass the QR string straight to `verify(input)` to let the SDK route internally.
 
 ## Result shape
 
@@ -158,9 +160,10 @@ The set of checks depends on the credential's shape:
 |---|---|
 | `signature` | Always |
 | `vc-jwt-claims` or `data-integrity-proof-config` | Always (proof-format-appropriate) |
+| `envelope-consistency` | When the input is the vc-jwt JSON envelope (`proof: { type: "JsonWebSignature2020", jwt }` — the shape OpenCred PDF/QR/JSON exports carry). Confirms the outer display fields match the signed token; a tampered display copy fails here. |
 | `date` | Always |
 | `x509-chain` | When the proof carries an `x5c` chain |
-| `revocation` | When `credentialStatus` is present AND DeDi is configured |
+| `revocation` | When `credentialStatus` is present AND DeDi is configured; when `credentialStatus` is present WITHOUT DeDi, a non-failing row records that revocation was **not** checked |
 | `pdf-*` | When the input is a PDF |
 
 ## Trust model
